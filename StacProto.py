@@ -9,6 +9,7 @@ from pystac.extensions.projection import AssetProjectionExtension
 
 skeleton_items = False
 
+
 def get_bbox_and_footprint(dataset):
 
     # create the bounding box it will depend if it comes from rasterio or rioxarray

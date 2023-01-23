@@ -1,0 +1,10 @@
+FROM ubuntu:22.04 as base
+
+RUN apt update && \
+    apt install gdal-bin -y && \
+    apt autoremove
+
+COPY entrypoint.cog.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]

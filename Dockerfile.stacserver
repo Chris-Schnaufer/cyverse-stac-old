@@ -1,11 +1,20 @@
 FROM ubuntu:22.04 as base
 
+ENV STAC_URL="https://data.cyverse.org/dav-anon/iplant/home/jgillan/stac.cyverse.org/cyverse_stac_catalog/catalog.json"
+
 RUN apt update && \
     apt install git nodejs npm -y
 
-RUN git clone https://github.com/radiantearth/stac-browser.git --single-branch && \
-    cd stac-browser && \
+RUN cd / && \
+    git clone https://github.com/radiantearth/stac-browser.git --single-branch && \
+    cd /stac-browser && \
     npm install
+
+RUN cd /stac-browser && \
+    npm run build -- --CATALOG_URL=${STAC_URL}
+
+RUN cd /stac-browser && \
+    npm install --global http-server
 
 COPY entrypoint.stacserver.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -3,17 +3,17 @@ FROM ubuntu:22.04 as base
 ENV STAC_URL="https://data.cyverse.org/dav-anon/iplant/home/jgillan/stac.cyverse.org/cyverse_stac_catalog/catalog.json"
 
 RUN apt update && \
-    apt install git nodejs npm -y
+    apt install nodejs npm -y
 
 RUN cd / && \
+    apt install git -y && \
     git clone https://github.com/radiantearth/stac-browser.git --single-branch && \
-    cd /stac-browser && \
-    npm install
+    apt remove git -y && \
+    apt autoremove -y
 
 RUN cd /stac-browser && \
-    npm run build -- --CATALOG_URL=${STAC_URL}
-
-RUN cd /stac-browser && \
+    npm install && \
+    npm run build -- --CATALOG_URL=${STAC_URL} && \
     npm install --global http-server
 
 COPY entrypoint.stacserver.sh /entrypoint.sh

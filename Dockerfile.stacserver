@@ -1,19 +1,18 @@
-FROM ubuntu:22.04 as base
+FROM node:lts-alpine as base
 
-ENV STAC_URL="https://data.cyverse.org/dav-anon/iplant/home/jgillan/stac.cyverse.org/cyverse_stac_catalog/catalog.json"
+ARG STAC_CODE_BRANCH=master
+ARG STAC_URL="https://data.cyverse.org/dav-anon/iplant/home/jgillan/stac.cyverse.org/cyverse_stac_catalog/catalog.json"
 
-RUN apt update && \
-    apt install nodejs npm -y
+RUN echo "Building ${STAC_CODE_BRANCH}"
 
 RUN cd / && \
-    apt install git -y && \
-    git clone https://github.com/radiantearth/stac-browser.git --single-branch && \
-    apt remove git -y && \
-    apt autoremove -y
+    apk add git-lfs && \
+    git clone --branch ${STAC_CODE_BRANCH} https://github.com/radiantearth/stac-browser.git --single-branch && \
+    apk del git-lfs
 
 RUN cd /stac-browser && \
     npm install && \
-    npm run build -- --CATALOG_URL=${STAC_URL} && \
+    npm run build -- --catalogUrl=${STAC_URL} && \
     npm install --global http-server
 
 COPY entrypoint.stacserver.sh /entrypoint.sh

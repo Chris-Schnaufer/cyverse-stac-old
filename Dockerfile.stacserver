@@ -18,4 +18,6 @@ RUN cd /stac-browser && \
 COPY entrypoint.stacserver.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+COPY *.pem /
+
 ENTRYPOINT [ "/entrypoint.sh" ]

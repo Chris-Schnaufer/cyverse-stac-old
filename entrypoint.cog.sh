@@ -2,6 +2,9 @@
 # Entrypoint for creating COG (Cloud Optimized GeoTiff) images
 
 WORKING_FOLDER=$(pwd)
+GDAL_TRANSLATE_CONST_PARAMS="-b 1 -b 2 -b 3 -of COG -co TILING_SCHEME=GoogleMapsCompatible -co OVERVIEW_QUALITY=100 -co QUALITY=100"
+GDALADDO_CONST_PARAMS="--config COMPRESS_OVERVIEW JPEG --config JPEG_QUALITY_OVERVIEW 100 --config PHOTOMETRIC_OVERVIEW YCBCR --config INTERLEAVE_OVERVIEW PIXEL -r average"
+GDALADDO_LEVELS="2 4 8 16"
 
 # Make sure we have a parameter
 if [ "$1"  == "" ]; then
@@ -42,11 +45,13 @@ if [[ -d "${WORKING_FOLDER}/$1" ]]; then
     if [[ "${CUR_FILE}" != "" ]]; then
       BASE_FILENAME=`basename "${CUR_FILE}"`
       NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
-      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" -of COG ${EXTRA_PARAMS}
+      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+      gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
     fi
   done
 else
-  BASE_FILENAME=`basename "${CUR_FILE}"`
+  BASE_FILENAME=`basename "${1}"`
   NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
-  gdal_translate "${1}" "${NEW_FILENAME}" -of COG ${EXTRA_PARAMS}
+  gdal_translate "${1}" "${NEW_FILENAME}" ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+  gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
 fi

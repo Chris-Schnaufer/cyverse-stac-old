@@ -2,7 +2,7 @@
 # Entrypoint for creating COG (Cloud Optimized GeoTiff) images
 
 WORKING_FOLDER=$(pwd)
-GDAL_TRANSLATE_CONST_PARAMS="-b 1 -b 2 -b 3 -of COG -co TILING_SCHEME=GoogleMapsCompatible -co OVERVIEW_QUALITY=100 -co QUALITY=100"
+GDAL_TRANSLATE_CONST_PARAMS="-of COG -co TILING_SCHEME=GoogleMapsCompatible -co OVERVIEW_QUALITY=100 -co QUALITY=100"
 GDALADDO_CONST_PARAMS="--config COMPRESS_OVERVIEW JPEG --config JPEG_QUALITY_OVERVIEW 100 --config PHOTOMETRIC_OVERVIEW YCBCR --config INTERLEAVE_OVERVIEW PIXEL -r average"
 GDALADDO_LEVELS="2 4 8 16"
 
@@ -11,6 +11,40 @@ if [ "$1"  == "" ]; then
   echo "Please specify a file or folder and try again"
   exit 1
 fi
+
+# Function for determining number of bands and returning GDAL_TRANSLATE parameter
+_get_gdal_bands() {
+  RETURN_GDAL=""
+
+  SAVEIFS=$IFS
+  IFS=$(echo -en "\n\b")
+
+  for i in $( gdalinfo ${1} | grep Band ); do
+    IFS=$SAVEIFS
+    HAVE_BAND=0
+    for p in $i; do
+      case $p in
+        Band)
+          HAVE_BAND=1
+          ;;
+        0|1|2|3|4|5|6|7|8|9)
+          if [[ "${HAVE_BAND}" == "1" ]]; then
+            RETURN_GDAL="${RETURN_GDAL} -b ${p}"
+          fi
+          HAVE_BAND=0
+          ;;
+        *)
+          HAVE_BAND=0
+          ;;
+      esac
+    done
+    IFS=$(echo -en "\n\b")
+  done
+
+ IFS=$SAVEIFS
+
+ echo "${RETURN_GDAL}"
+}
 
 # Check for extra parameters
 EXTRA_PARAMS=""
@@ -28,30 +62,32 @@ if [[ -d "${WORKING_FOLDER}/$1" ]]; then
     CUR_FILE=""
     case "${ONE_FILE: -4}" in
       ".tif")
-        CUR_FILE="${ONE_FILE}"
+        CUR_FILE=$(realpath "${ONE_FILE}")
         ;;
       ".TIF")
-        CUR_FILE="${ONE_FILE}"
+        CUR_FILE=$(realpath "${ONE_FILE}")
         ;;
     esac
     case "${ONE_FILE: -5}" in
       ".tiff")
-        CUR_FILE="${ONE_FILE}"
+        CUR_FILE=$(realpath "${ONE_FILE}")
         ;;
       ".TIFF")
-        CUR_FILE="${ONE_FILE}"
+        CUR_FILE=$(realpath "${ONE_FILE}")
         ;;
     esac
     if [[ "${CUR_FILE}" != "" ]]; then
       BASE_FILENAME=`basename "${CUR_FILE}"`
       NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
-      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+      GDAL_BANDS=$(_get_gdal_bands "${CUR_FILE}")
+      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
       gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
     fi
   done
 else
   BASE_FILENAME=`basename "${1}"`
   NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
-  gdal_translate "${1}" "${NEW_FILENAME}" ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+  GDAL_BANDS=$(_get_gdal_bands "${1}")
+  gdal_translate "${1}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
   gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
 fi

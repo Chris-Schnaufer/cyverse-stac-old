@@ -1,6 +1,6 @@
 FROM node:lts-alpine as base
 
-ARG STAC_CODE_BRANCH=master
+ARG STAC_CODE_BRANCH=main
 ARG STAC_URL="https://data.cyverse.org/dav-anon/iplant/home/jgillan/stac.cyverse.org/cyverse_stac_catalog/catalog.json"
 
 RUN echo "Building ${STAC_CODE_BRANCH}"

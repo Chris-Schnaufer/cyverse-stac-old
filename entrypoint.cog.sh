@@ -5,6 +5,7 @@ WORKING_FOLDER=$(pwd)
 GDAL_TRANSLATE_CONST_PARAMS="-of COG -co TILING_SCHEME=GoogleMapsCompatible -co OVERVIEW_QUALITY=100 -co QUALITY=100"
 GDALADDO_CONST_PARAMS="--config COMPRESS_OVERVIEW JPEG --config JPEG_QUALITY_OVERVIEW 100 --config PHOTOMETRIC_OVERVIEW YCBCR --config INTERLEAVE_OVERVIEW PIXEL -r average"
 GDALADDO_LEVELS="2 4 8 16"
+HAVE_COMPRESSION=0
 
 # Make sure we have a parameter
 if [ "$1"  == "" ]; then
@@ -46,11 +47,44 @@ _get_gdal_bands() {
  echo "${RETURN_GDAL}"
 }
 
+# Function for determining channel width and returning GDAL_TRANSLATE compression type
+_get_gdal_compression() {
+  # Default compression
+  RETURN_COMPRESSION="LZW"
+
+  # Check if we're to actually return compression (when the option is set)
+  if [[ "${2}" != "1" ]]; then
+    echo ""
+    return 0
+  fi
+
+  SAVEIFS=$IFS
+  IFS=$(echo -en "\n\b")
+
+  for i in $( gdalinfo ${1} | grep Type ); do
+    IFS=$SAVEIFS
+    for p in $i; do
+      case $p in
+        Type=Byte,|Type=Int8,)
+          RETURN_COMPRESSION="JPEG"
+          ;;
+        *)
+          ;;
+      esac
+    done
+    IFS=$(echo -en "\n\b")
+  done
+
+ IFS=$SAVEIFS
+
+ echo "-co COMPRESS=${RETURN_COMPRESSION}"
+}
+
 # Check for extra parameters
 EXTRA_PARAMS=""
 if [[ "${2}" != "" ]]; then
   if [[ "${2}" == "COMPRESS" ]]; then
-      EXTRA_PARAMS="${EXTRA_PARAMS} -co COMPRESS=JPEG"
+    HAVE_COMPRESSION=1
   fi
 fi
 
@@ -80,7 +114,8 @@ if [[ -d "${WORKING_FOLDER}/$1" ]]; then
       BASE_FILENAME=`basename "${CUR_FILE}"`
       NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
       GDAL_BANDS=$(_get_gdal_bands "${CUR_FILE}")
-      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+      GDAL_COMPRESSION=$(_get_gdal_compression "${CUR_FILE}" "${HAVE_COMPRESSION}")
+      gdal_translate "${CUR_FILE}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_COMPRESSION} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
       gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
     fi
   done
@@ -88,6 +123,7 @@ else
   BASE_FILENAME=`basename "${1}"`
   NEW_FILENAME="${WORKING_FOLDER}/${BASE_FILENAME%.*}_cog.${BASE_FILENAME##*.}"
   GDAL_BANDS=$(_get_gdal_bands "${1}")
-  gdal_translate "${1}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
+  GDAL_COMPRESSION=$(_get_gdal_compression "${1}" "${HAVE_COMPRESSION}")
+  gdal_translate "${1}" "${NEW_FILENAME}" ${GDAL_BANDS} ${GDAL_COMPRESSION} ${GDAL_TRANSLATE_CONST_PARAMS} ${EXTRA_PARAMS}
   gdaladdo ${GDALADDO_CONST_PARAMS} "${NEW_FILENAME}" ${GDALADDO_LEVELS}
 fi
